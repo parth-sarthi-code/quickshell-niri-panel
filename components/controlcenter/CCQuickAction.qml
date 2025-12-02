@@ -26,16 +26,16 @@ Rectangle {
         // Icon
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            width: 32
-            height: 32
-            radius: 16
+            width: 36
+            height: 36
+            radius: 18
             color: active ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.1)
 
             Text {
                 anchors.centerIn: parent
                 text: action.icon
                 font.family: "Symbols Nerd Font"
-                font.pixelSize: 16
+                font.pixelSize: 18
                 color: active ? Config.panelForeground : Config.inactiveColor
             }
         }

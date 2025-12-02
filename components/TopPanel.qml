@@ -162,42 +162,42 @@ PanelWindow {
             // System stats (when enabled)
             RowLayout {
                 visible: root.controlCenter && root.controlCenter.showStatsInPanel
-                spacing: 8
+                spacing: 12
 
                 // CPU
                 Row {
-                    spacing: 4
+                    spacing: 5
                     Text {
                         text: "󰻠"
                         font.family: "Symbols Nerd Font"
                         font.pixelSize: 16
-                        color: root.controlCenter && root.controlCenter.cpuUsage > 80 ? Config.urgentColor : Config.accentColor
+                        color: Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                         text: (root.controlCenter ? root.controlCenter.cpuUsage : 0) + "%"
                         font.family: Config.fontFamily
-                        font.pixelSize: Config.fontSize
+                        font.pixelSize: 13
                         font.weight: Font.Medium
-                        color: Config.panelForeground
+                        color: root.controlCenter && root.controlCenter.cpuUsage > 80 ? Config.urgentColor : Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
-                // Temp (more visible)
+                // Temp
                 Row {
-                    spacing: 3
+                    spacing: 5
                     Text {
-                        text: "󰔏"
+                        text: "󱃂"
                         font.family: "Symbols Nerd Font"
-                        font.pixelSize: 14
-                        color: root.controlCenter && root.controlCenter.cpuTemp > 80 ? Config.urgentColor : Config.warningColor
+                        font.pixelSize: 16
+                        color: Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        text: (root.controlCenter ? root.controlCenter.cpuTemp : 0) + "°"
+                        text: (root.controlCenter ? root.controlCenter.cpuTemp : 0) + "°C"
                         font.family: Config.fontFamily
-                        font.pixelSize: Config.fontSize
+                        font.pixelSize: 14
                         font.weight: Font.Medium
                         color: root.controlCenter && root.controlCenter.cpuTemp > 80 ? Config.urgentColor : Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
@@ -206,20 +206,20 @@ PanelWindow {
 
                 // RAM
                 Row {
-                    spacing: 4
+                    spacing: 5
                     Text {
                         text: "󰍛"
                         font.family: "Symbols Nerd Font"
                         font.pixelSize: 16
-                        color: root.controlCenter && root.controlCenter.ramUsage > 80 ? Config.urgentColor : Config.accentColor
+                        color: Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                         text: (root.controlCenter ? root.controlCenter.ramUsage : 0) + "%"
                         font.family: Config.fontFamily
-                        font.pixelSize: Config.fontSize
+                        font.pixelSize: 14
                         font.weight: Font.Medium
-                        color: Config.panelForeground
+                        color: root.controlCenter && root.controlCenter.ramUsage > 80 ? Config.urgentColor : Config.panelForeground
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }

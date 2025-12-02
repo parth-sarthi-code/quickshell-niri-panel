@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Audio/Volume service using wpctl with real-time updates via pactl subscribe
+// Audio/Volume service using wpctl
 Singleton {
     id: root
 
@@ -29,35 +29,12 @@ Singleton {
         }
     }
 
-    // Subscribe to PulseAudio/PipeWire events for real-time updates
-    Process {
-        id: subscribeProc
-        command: ["pactl", "subscribe"]
-        running: true
-        stdout: SplitParser {
-            onRead: function(line) {
-                // Listen for sink changes (volume/mute)
-                if (line.includes("sink") && line.includes("change")) {
-                    volumeProc.running = true
-                }
-            }
-        }
-        onExited: function(exitCode, exitStatus) {
-            // Restart if it dies
-            restartTimer.running = true
-        }
-    }
-
+    // Poll for external volume changes
     Timer {
-        id: restartTimer
         interval: 1000
-        onTriggered: subscribeProc.running = true
-    }
-
-    // Initial fetch on startup
-    Timer {
-        interval: 100
         running: true
+        repeat: true
+        triggeredOnStart: true
         onTriggered: volumeProc.running = true
     }
 
@@ -65,7 +42,7 @@ Singleton {
         id: setVolumeProc
         property real vol: 0.5
         command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", vol.toString()]
-        onExited: volumeProc.running = true  // Refresh after setting
+        onExited: volumeProc.running = true
     }
 
     Process {
@@ -76,13 +53,13 @@ Singleton {
 
     function setVolume(val) {
         val = Math.max(0, Math.min(100, Math.round(val)))
-        root.volume = val  // Optimistic update
+        root.volume = val
         setVolumeProc.vol = val / 100
         setVolumeProc.running = true
     }
 
     function toggleMute() {
-        root.muted = !root.muted  // Optimistic update
+        root.muted = !root.muted
         toggleMuteProc.running = true
     }
 

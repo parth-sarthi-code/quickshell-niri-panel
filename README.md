@@ -10,9 +10,20 @@ A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/
 
 ## ✨ Features
 
-**Panel**: Workspaces • Focused app • Network speed • WiFi/Bluetooth/Battery indicators • Clock
+### Top Panel
+- **Workspace Indicator** — Visual pills showing active/inactive workspaces
+- **Focused App** — Currently focused window title
+- **Network Speed** — Toggle-able upload/download monitor
+- **Status Icons** — WiFi, Bluetooth, Battery, Airplane mode, Night light
+- **Clock** — Clean time display
 
-**Control Center**: Quick toggles • Volume/Brightness sliders • Power profiles • System stats • Media controls
+### Control Center
+- **Quick Toggles** — WiFi, Bluetooth, Airplane Mode, Night Light
+- **Sliders** — Volume (PipeWire), Brightness
+- **Power Profiles** — Power Saver / Balanced / Performance
+- **System Stats** — CPU usage, temperature, RAM
+- **Media Controls** — Now playing with artist/title
+- **Quick Actions** — Lock screen
 
 ## 📋 TODO
 
@@ -22,6 +33,8 @@ A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/
 - [ ] System tray
 
 ## 🚀 Installation
+
+### Quick Install (Arch-based)
 
 ```bash
 git clone https://github.com/parth-sarthi-code/quickshell-niri-panel.git ~/.config/quickshell
@@ -33,14 +46,14 @@ The installer will:
 - Set up Nirvana config + fastfetch theme
 - Show run instructions
 
-### Manual
+### Manual Install
 
 ```bash
 git clone https://github.com/parth-sarthi-code/quickshell-niri-panel.git ~/.config/quickshell
 LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell
 ```
 
-### Auto-start
+### Auto-start with Niri
 
 Add to `~/.config/niri/config.kdl`:
 
@@ -50,13 +63,45 @@ spawn-at-startup "sh" "-c" "LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PA
 
 ## 🛠️ Dependencies
 
-**Required:** Quickshell, Niri, Qt 6.10+, Nerd Fonts
+**Required:**
+- Quickshell >= 0.2.1
+- Niri Wayland compositor
+- Qt 6.10+
+- Nerd Fonts
 
-**Optional:** wireplumber, brightnessctl, networkmanager, bluez, tuned, gammastep, playerctl, fastfetch
+**Optional:**
+- `wireplumber` — Audio control
+- `brightnessctl` — Brightness control
+- `networkmanager` — Network management
+- `bluez` — Bluetooth support
+- `tuned` — Power profiles
+- `gammastep` — Night light
+- `playerctl` — Media controls
+- `fastfetch` — System info (with Nirvana theme)
 
-## ⚙️ Config
+## 📁 Structure
 
-Edit `Config.qml` for colors, fonts, panel height, opacity.
+```
+~/.config/quickshell/
+├── shell.qml           # Entry point
+├── Config.qml          # Theme configuration
+├── components/         # UI components
+│   ├── TopPanel.qml
+│   └── controlcenter/
+└── services/           # System services
+    └── scripts/        # Install script
+```
+
+## ⚙️ Configuration
+
+Edit `Config.qml`:
+
+```qml
+readonly property int panelHeight: 32
+readonly property real panelOpacity: 0.45
+readonly property color accentColor: "#007AFF"
+readonly property string fontFamily: "SF Pro Display, Inter, sans-serif"
+```
 
 ## 📝 License
 

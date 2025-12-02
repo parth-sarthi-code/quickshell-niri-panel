@@ -69,8 +69,6 @@ PanelWindow {
             anchors.centerIn: parent
             spacing: Config.itemSpacing
 
-            BrightnessIndicator {}
-            VolumeIndicator {}
             NetworkIndicator {}
             BluetoothIndicator {}
             BatteryIndicator {}

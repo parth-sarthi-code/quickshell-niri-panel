@@ -41,11 +41,11 @@ Rectangle {
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: 14
+            bottomMargin: 10
         }
         text: icon
         font.family: "Symbols Nerd Font"
-        font.pixelSize: 26
+        font.pixelSize: 18
         color: value > 20 ? Config.ccModuleBackground : Config.panelForeground
         
         Behavior on color {
@@ -61,13 +61,17 @@ Rectangle {
 
     // Value display (shows while dragging)
     Text {
-        anchors.centerIn: parent
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            top: parent.top
+            topMargin: 10
+        }
         visible: dragging
         text: Math.round(value) + "%"
         font.family: Config.fontFamily
-        font.pixelSize: 18
+        font.pixelSize: 12
         font.weight: Font.Bold
-        color: value > 60 ? Config.ccModuleBackground : Config.panelForeground
+        color: value > 70 ? Config.ccModuleBackground : Config.panelForeground
     }
 
     // Drag handling

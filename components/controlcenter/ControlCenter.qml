@@ -31,10 +31,10 @@ PanelWindow {
 
     color: "transparent"
 
-    // Click outside to close
+    // Don't grab exclusive keyboard focus - it blocks other windows
     WlrLayershell.namespace: "quickshell-controlcenter"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: expanded ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     // Power profile management using tuned-adm
     Process {
@@ -129,6 +129,60 @@ PanelWindow {
         border.width: 1
     }
 
+    // System stats polling
+    property int cpuUsage: 0
+    property int cpuTemp: 0
+    property int ramUsage: 0
+    property int ramTotal: 0
+
+    Process {
+        id: cpuStatProc
+        command: ["sh", "-c", "top -bn1 | grep 'Cpu(s)' | awk '{print int($2 + $4)}'"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                let val = parseInt(line.trim())
+                if (!isNaN(val)) controlCenter.cpuUsage = val
+            }
+        }
+    }
+
+    Process {
+        id: cpuTempProc
+        command: ["sh", "-c", "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | awk '{sum+=$1; n++} END {if(n>0) print int(sum/n/1000)}'"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                let val = parseInt(line.trim())
+                if (!isNaN(val)) controlCenter.cpuTemp = val
+            }
+        }
+    }
+
+    Process {
+        id: ramStatProc
+        command: ["sh", "-c", "free | awk '/Mem:/ {printf \"%d %d\", ($3/$2)*100, $2/1024/1024}'"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                let parts = line.trim().split(" ")
+                if (parts.length >= 2) {
+                    controlCenter.ramUsage = parseInt(parts[0]) || 0
+                    controlCenter.ramTotal = parseInt(parts[1]) || 0
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 2000
+        running: controlCenter.expanded
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            cpuStatProc.running = true
+            cpuTempProc.running = true
+            ramStatProc.running = true
+        }
+    }
+
     // Content
     ColumnLayout {
         id: contentColumn
@@ -138,15 +192,128 @@ PanelWindow {
         }
         spacing: Config.ccModuleSpacing
 
-        // Top row: Brightness/Volume sliders (half width each)
+        // Top row: System Stats (left) + Sliders (right)
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 140
+            Layout.preferredHeight: 120
             spacing: Config.ccModuleSpacing
+
+            // System Stats Box
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: Config.ccModuleBackground
+                radius: Config.ccModuleRadius
+
+                ColumnLayout {
+                    anchors {
+                        fill: parent
+                        margins: 12
+                    }
+                    spacing: 8
+
+                    // CPU Usage + Temp
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "󰻠"
+                            font.family: "Symbols Nerd Font"
+                            font.pixelSize: 16
+                            color: cpuUsage > 80 ? Config.urgentColor : Config.accentColor
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: "CPU"
+                                font.family: Config.fontFamily
+                                font.pixelSize: 11
+                                font.weight: Font.Medium
+                                color: Config.inactiveColor
+                            }
+
+                            RowLayout {
+                                spacing: 8
+
+                                Text {
+                                    text: cpuUsage + "%"
+                                    font.family: Config.fontFamily
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    color: cpuUsage > 80 ? Config.urgentColor : Config.panelForeground
+                                }
+
+                                Text {
+                                    text: cpuTemp + "°C"
+                                    font.family: Config.fontFamily
+                                    font.pixelSize: 12
+                                    color: cpuTemp > 80 ? Config.urgentColor : Config.inactiveColor
+                                }
+                            }
+                        }
+                    }
+
+                    // Separator
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Qt.rgba(1, 1, 1, 0.1)
+                    }
+
+                    // RAM Usage
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "󰍛"
+                            font.family: "Symbols Nerd Font"
+                            font.pixelSize: 16
+                            color: ramUsage > 80 ? Config.urgentColor : Config.accentColor
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: "RAM"
+                                font.family: Config.fontFamily
+                                font.pixelSize: 11
+                                font.weight: Font.Medium
+                                color: Config.inactiveColor
+                            }
+
+                            RowLayout {
+                                spacing: 4
+
+                                Text {
+                                    text: ramUsage + "%"
+                                    font.family: Config.fontFamily
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    color: ramUsage > 80 ? Config.urgentColor : Config.panelForeground
+                                }
+
+                                Text {
+                                    text: "/ " + ramTotal + "GB"
+                                    font.family: Config.fontFamily
+                                    font.pixelSize: 11
+                                    color: Config.inactiveColor
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // Brightness slider
             CCSlider {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Config.ccSliderWidth
                 Layout.fillHeight: true
                 icon: BrightnessService.brightness > 70 ? "󰃠" : (BrightnessService.brightness > 30 ? "󰃟" : "󰃞")
                 value: BrightnessService.brightness
@@ -157,7 +324,7 @@ PanelWindow {
 
             // Volume slider
             CCSlider {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Config.ccSliderWidth
                 Layout.fillHeight: true
                 icon: AudioService.muted ? "󰖁" : (AudioService.volume > 50 ? "󰕾" : (AudioService.volume > 0 ? "󰖀" : "󰕿"))
                 value: AudioService.muted ? 0 : AudioService.volume

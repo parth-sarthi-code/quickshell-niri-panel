@@ -100,16 +100,16 @@ PanelWindow {
                     Row {
                         spacing: 3
                         Text {
-                            text: "󰇚"
-                            font.family: "Symbols Nerd Font"
-                            font.pixelSize: 12
+                            text: "↓"
+                            font.family: Config.fontFamily
+                            font.pixelSize: 14
                             color: Config.panelForeground
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: NetworkSpeedService.downloadText
                             font.family: Config.fontFamily
-                            font.pixelSize: Config.fontSizeSmall
+                            font.pixelSize: Config.fontSize
                             font.weight: Font.Medium
                             color: Config.panelForeground
                             anchors.verticalCenter: parent.verticalCenter
@@ -120,16 +120,16 @@ PanelWindow {
                     Row {
                         spacing: 3
                         Text {
-                            text: "󰕒"
-                            font.family: "Symbols Nerd Font"
-                            font.pixelSize: 12
+                            text: "↑"
+                            font.family: Config.fontFamily
+                            font.pixelSize: 14
                             color: Config.panelForeground
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: NetworkSpeedService.uploadText
                             font.family: Config.fontFamily
-                            font.pixelSize: Config.fontSizeSmall
+                            font.pixelSize: Config.fontSize
                             font.weight: Font.Medium
                             color: Config.panelForeground
                             anchors.verticalCenter: parent.verticalCenter

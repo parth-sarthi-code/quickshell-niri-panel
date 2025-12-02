@@ -1,111 +1,101 @@
 # Quickshell Niri Panel
 
-A lightweight, macOS-inspired top panel for the [niri](https://github.com/YaLTeR/niri) Wayland compositor using [Quickshell](https://quickshell.outfoxxed.me/).
+A lightweight, macOS-inspired top panel and control center for the [Niri](https://github.com/YaLTeR/niri) Wayland compositor, built with [Quickshell](https://quickshell.outfoxxed.me/).
 
-## Features
+![Wayland](https://img.shields.io/badge/Wayland-Niri-blue?style=flat-square)
+![Quickshell](https://img.shields.io/badge/Quickshell-0.2.1-green?style=flat-square)
+![Qt](https://img.shields.io/badge/Qt-6.10-purple?style=flat-square)
 
-- **Semi-transparent panel** (~45% opacity) with clean macOS-style aesthetics
-- **Workspace indicator** - pill-style dots in the center, click or scroll to switch
-- **System status indicators**:
-  - Brightness (scroll to adjust)
-  - Volume (click to mute, scroll to adjust, right-click for settings)
-  - WiFi/Network (click to toggle, right-click for settings)
-  - Bluetooth (click to toggle power, right-click for settings)
-  - Battery (with percentage and status)
-- **Clock** - macOS-style format (Day Mon DD h:mm AM/PM)
-- **App launcher** - click the grid icon to launch fuzzel/wofi/rofi
-- **Focused app name** - displays the currently focused application
+## ✨ Features
 
-## Requirements
+### Top Panel
+- **Workspace Indicator** - Visual workspace pills with active/inactive states
+- **Focused App Name** - Shows currently focused window title
+- **Network Speed Monitor** - Toggle-able upload/download speed display
+- **System Tray Icons**:
+  - Network status (WiFi/Ethernet with signal strength)
+  - Bluetooth status
+  - Battery with percentage and charging state
+  - Airplane mode indicator
+  - Night light indicator
+- **Control Center Trigger** - macOS-style pill button
+- **Clock** - Clean time display
 
-- [Quickshell](https://quickshell.outfoxxed.me/) >= 0.2.1
-- [niri](https://github.com/YaLTeR/niri) >= 25.08
-- [qml-niri](https://github.com/imiric/qml-niri) plugin installed
-- A Nerd Font for icons (e.g., JetBrainsMono Nerd Font, Symbols Nerd Font)
+### Control Center (GNOME/macOS Style)
+- **Quick Toggles**: WiFi, Bluetooth, Airplane Mode, Night Light
+- **Sliders**: Volume (PipeWire), Brightness
+- **Power Profiles** - Power Saver / Balanced / Performance
+- **System Stats** - CPU usage, temperature, RAM
+- **Media Controls** - Now playing with artist/title
+- **Quick Actions** - Lock screen, Settings
 
-### Optional dependencies (for full functionality)
+## 📊 Performance
 
-- `brightnessctl` - for brightness control
-- `wpctl` or `pactl` - for volume control
-- `nmcli` - for network status and control
-- `bluetoothctl` - for Bluetooth status and control
-- `fuzzel`, `wofi`, or `rofi` - for app launcher
+| Service | Method | Interval | Notes |
+|---------|--------|----------|-------|
+| **Battery** | Native D-Bus | Real-time | Zero polling |
+| **Bluetooth** | Native D-Bus | Real-time | Zero polling |
+| **Audio** | wpctl | 5s | Optimistic UI |
+| **Brightness** | sysfs | 5s | Direct file read |
+| **Network** | busctl | 5-15s | Adaptive polling |
+| **Network Speed** | /proc/net/dev | 3s | On-demand only |
+| **System Stats** | /proc + sysfs | 3-7s | Faster when CC open |
 
-## Installation
+**Resource Usage**: ~0.1-0.3% CPU idle, ~25-35 MB memory
 
-1. Install qml-niri following [its installation guide](https://github.com/imiric/qml-niri#installation)
-
-2. The config is already in place at `~/.config/quickshell/`
-
-3. Run quickshell:
-   ```bash
-   quickshell
-   ```
-
-4. To start automatically with niri, add to `~/.config/niri/config.kdl`:
-   ```kdl
-   spawn-at-startup "quickshell"
-   ```
-
-## Configuration
-
-Edit `Config.qml` to customize:
-
-- `panelHeight` - panel height in pixels (default: 28)
-- `panelOpacity` - background opacity 0.0-1.0 (default: 0.45)
-- `panelBackground` - background color
-- `fontFamily` - font for text
-- `fontSize` - base font size
-- `accentColor`, `activeColor`, etc. - color scheme
-
-## Interactions
-
-| Component | Action | Effect |
-|-----------|--------|--------|
-| App Launcher | Click | Open app launcher (fuzzel/wofi/rofi) |
-| Focused App | Right-click | Close focused window |
-| Workspaces | Click dot | Switch to workspace |
-| Workspaces | Scroll | Navigate workspaces |
-| Brightness | Scroll | Adjust brightness |
-| Volume | Click | Toggle mute |
-| Volume | Scroll | Adjust volume |
-| Volume | Right-click | Open sound settings |
-| Network | Click | Toggle WiFi |
-| Network | Right-click | Open network settings |
-| Bluetooth | Click | Toggle Bluetooth power |
-| Bluetooth | Right-click | Open Bluetooth settings |
-| Battery | Click | Open power settings |
-| Clock | Click | Open calendar |
-
-## Structure
+## 📁 Structure
 
 ```
 ~/.config/quickshell/
-├── shell.qml              # Main entry point
-├── Config.qml             # Configuration singleton
-├── qmldir                 # Module definition
+├── shell.qml              # Entry point
+├── Config.qml             # Theme configuration
 ├── components/
-│   ├── TopPanel.qml       # Main panel layout
-│   ├── WorkspaceIndicator.qml
-│   ├── AppLauncher.qml
-│   ├── FocusedApp.qml
-│   ├── VolumeIndicator.qml
-│   ├── BrightnessIndicator.qml
-│   ├── NetworkIndicator.qml
-│   ├── BluetoothIndicator.qml
-│   ├── BatteryIndicator.qml
-│   ├── Clock.qml
-│   ├── ToolTip.qml
-│   └── qmldir
+│   ├── TopPanel.qml       # Main panel bar
+│   ├── Clock.qml, FocusedApp.qml, WorkspaceIndicator.qml
+│   ├── NetworkIndicator.qml, BluetoothIndicator.qml, BatteryIndicator.qml
+│   └── controlcenter/
+│       ├── ControlCenter.qml
+│       ├── CCToggle.qml, CCSlider.qml, CCQuickAction.qml
 └── services/
-    ├── AudioService.qml
-    ├── BrightnessService.qml
-    ├── NetworkService.qml
-    ├── BluetoothService.qml
-    ├── BatteryService.qml
-    └── qmldir
+    ├── AudioService.qml, BatteryService.qml, BluetoothService.qml
+    ├── BrightnessService.qml, NetworkService.qml, NetworkSpeedService.qml
 ```
 
-## License
+## 🛠️ Dependencies
 
-MIT
+**Required:**
+- Quickshell >= 0.2.1
+- Niri Wayland compositor
+- Qt 6.10+
+- Nerd Fonts
+
+**Optional:**
+- `wireplumber` - Audio
+- `brightnessctl` - Brightness
+- `networkmanager` - Network
+- `bluez` - Bluetooth
+- `tuned` - Power profiles
+- `gammastep` - Night light
+- `playerctl` - Media controls
+
+## 🚀 Installation
+
+```bash
+git clone https://github.com/parth-sarthi-code/quickshell-niri-panel.git ~/.config/quickshell
+LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell
+```
+
+## ⚙️ Configuration
+
+Edit `Config.qml`:
+
+```qml
+readonly property int panelHeight: 32
+readonly property real panelOpacity: 0.45
+readonly property color accentColor: "#007AFF"
+readonly property string fontFamily: "SF Pro Display, Inter, sans-serif"
+```
+
+## 📝 License
+
+MIT License

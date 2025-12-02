@@ -111,12 +111,36 @@ A lightweight, macOS-inspired top panel and control center for the [Niri](https:
 - `tuned` - Power profiles
 - `gammastep` - Night light
 - `playerctl` - Media controls
+- `fastfetch` - System info (with Nirvana theme)
 
 ## 🚀 Installation
+
+### Quick Install (Arch-based)
+
+```bash
+# Clone and run the installer
+git clone https://github.com/parth-sarthi-code/quickshell-niri-panel.git ~/.config/quickshell
+python3 ~/.config/quickshell/scripts/install.py
+```
+
+The installer will:
+- Check and install dependencies (pacman/AUR)
+- Set up the Nirvana fastfetch theme
+- Show run instructions
+
+### Manual Install
 
 ```bash
 git clone https://github.com/parth-sarthi-code/quickshell-niri-panel.git ~/.config/quickshell
 LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell
+```
+
+### Auto-start with Niri
+
+Add to your `~/.config/niri/config.kdl`:
+
+```kdl
+spawn-at-startup "sh" "-c" "LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell"
 ```
 
 ## ⚙️ Configuration

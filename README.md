@@ -125,6 +125,7 @@ python3 ~/.config/quickshell/scripts/install.py
 
 The installer will:
 - Check and install dependencies (pacman/AUR)
+- Clone Nirvana shell config to `~/.config/quickshell/`
 - Set up the Nirvana fastfetch theme
 - Show run instructions
 

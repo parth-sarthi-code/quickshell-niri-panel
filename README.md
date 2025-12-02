@@ -8,6 +8,12 @@ A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/
 ![Quickshell](https://img.shields.io/badge/Quickshell-0.2.1-green?style=flat-square)
 ![Qt](https://img.shields.io/badge/Qt-6.10-purple?style=flat-square)
 
+## 📸 Screenshots
+
+| Minimal Bar | Expanded Bar | Control Panel |
+|:-----------:|:------------:|:-------------:|
+| ![Minimal](minimal_bar.png) | ![Expanded](expanded_bar.png) | ![Control Panel](control_panel.png) |
+
 ## ✨ Features
 
 ### Top Panel

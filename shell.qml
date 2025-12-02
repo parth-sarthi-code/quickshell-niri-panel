@@ -2,10 +2,14 @@ import QtQuick
 import Quickshell
 import Niri 0.1
 import "components"
+import "components/controlcenter"
 import "services"
 
 ShellRoot {
     id: root
+
+    // Global reference to control center
+    property alias controlCenter: ccLoader.item
 
     // Niri IPC connection
     Niri {
@@ -27,5 +31,14 @@ ShellRoot {
     LazyLoader {
         active: true
         component: TopPanel {}
+    }
+
+    // Load the control center
+    LazyLoader {
+        id: ccLoader
+        active: true
+        component: ControlCenter {
+            id: controlCenterInstance
+        }
     }
 }

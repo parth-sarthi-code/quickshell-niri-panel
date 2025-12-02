@@ -27,4 +27,16 @@ Singleton {
     readonly property int itemSpacing: 12
     readonly property int iconSize: 18
     readonly property int borderRadius: 6
+    
+    // Control Center settings
+    readonly property int ccWidth: 360
+    readonly property int ccPadding: 16
+    readonly property int ccModuleRadius: 20
+    readonly property int ccModuleSpacing: 12
+    readonly property real ccBackgroundOpacity: 0.85
+    readonly property color ccBackground: "#1c1c1e"
+    readonly property color ccModuleBackground: "#2c2c2e"
+    readonly property color ccModuleActiveBackground: "#007AFF"
+    readonly property color ccSliderBackground: "#3a3a3c"
+    readonly property color ccSliderFillColor: "#ffffff"
 }

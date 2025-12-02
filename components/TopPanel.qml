@@ -49,27 +49,52 @@ PanelWindow {
         FocusedApp {}
     }
 
-    // Right section - Status icons and clock
-    RowLayout {
+    // Right section - Status icons and clock (clickable for Control Center)
+    Rectangle {
+        id: rightSection
         anchors.right: parent.right
-        anchors.rightMargin: 14
+        anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Config.itemSpacing
+        width: statusRow.width + 12
+        height: Config.panelHeight - 4
+        radius: 8
+        color: statusMa.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
 
-        BrightnessIndicator {}
-        VolumeIndicator {}
-        NetworkIndicator {}
-        BluetoothIndicator {}
-        BatteryIndicator {}
-        
-        // Separator
-        Rectangle {
-            width: 1
-            height: Config.panelHeight - 12
-            color: Qt.rgba(1, 1, 1, 0.2)
-            Layout.alignment: Qt.AlignVCenter
+        Behavior on color {
+            ColorAnimation { duration: 100 }
         }
 
-        Clock {}
+        RowLayout {
+            id: statusRow
+            anchors.centerIn: parent
+            spacing: Config.itemSpacing
+
+            BrightnessIndicator {}
+            VolumeIndicator {}
+            NetworkIndicator {}
+            BluetoothIndicator {}
+            BatteryIndicator {}
+            
+            // Separator
+            Rectangle {
+                width: 1
+                height: Config.panelHeight - 12
+                color: Qt.rgba(1, 1, 1, 0.2)
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Clock {}
+        }
+
+        MouseArea {
+            id: statusMa
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: {
+                if (root.controlCenter) {
+                    root.controlCenter.toggle()
+                }
+            }
+        }
     }
 }

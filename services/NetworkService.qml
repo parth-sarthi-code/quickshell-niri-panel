@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Network service using nmcli
+// Network service using nmcli (NetworkManager)
 Singleton {
     id: root
 
@@ -14,7 +14,7 @@ Singleton {
     property string ip: ""
 
     Timer {
-        interval: 5000
+        interval: 3000
         running: true
         repeat: true
         triggeredOnStart: true
@@ -23,7 +23,7 @@ Singleton {
 
     Process {
         id: networkProc
-        command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION,SIGNAL", "device", "status"]
+        command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device", "status"]
         stdout: SplitParser {
             onRead: function(line) {
                 let parts = line.split(":")
@@ -32,12 +32,14 @@ Singleton {
                     let state = parts[1]
                     let conn = parts[2]
                     
-                    if (state === "connected") {
-                        root.connected = true
+                    // Check if this device is connected
+                    if (state.startsWith("connected")) {
                         if (devType === "wifi") {
+                            root.connected = true
                             root.type = "wifi"
                             root.ssid = conn
-                        } else if (devType === "ethernet") {
+                        } else if (devType === "ethernet" && !root.connected) {
+                            root.connected = true
                             root.type = "ethernet"
                             root.ssid = conn
                         }
@@ -46,16 +48,16 @@ Singleton {
             }
         }
         onExited: function(exitCode) {
-            if (exitCode !== 0) {
-                root.connected = false
-                root.type = "none"
+            // After parsing device status, get wifi signal if connected via wifi
+            if (root.type === "wifi") {
+                wifiStrengthProc.running = true
             }
         }
     }
 
     Process {
         id: wifiStrengthProc
-        command: ["sh", "-c", "nmcli -t -f SIGNAL,ACTIVE dev wifi | grep yes | cut -d: -f1"]
+        command: ["sh", "-c", "nmcli -t -f SIGNAL,ACTIVE dev wifi 2>/dev/null | grep ':yes' | cut -d: -f1"]
         stdout: SplitParser {
             onRead: function(line) {
                 let sig = parseInt(line.trim())
@@ -67,14 +69,12 @@ Singleton {
     }
 
     function updateNetwork() {
+        // Reset state before checking
         root.connected = false
         root.type = "none"
         root.ssid = ""
         root.strength = 0
         networkProc.running = true
-        if (type === "wifi") {
-            wifiStrengthProc.running = true
-        }
     }
 
     Process {

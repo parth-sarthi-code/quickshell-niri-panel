@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Audio/Volume service using wpctl - simplified
+// Audio/Volume service using wpctl with real-time updates via pactl subscribe
 Singleton {
     id: root
 
@@ -29,12 +29,35 @@ Singleton {
         }
     }
 
-    // Poll less frequently - volume doesn't change often on its own
-    Timer {
-        interval: 5000  // 5s instead of 2s
+    // Subscribe to PulseAudio/PipeWire events for real-time updates
+    Process {
+        id: subscribeProc
+        command: ["pactl", "subscribe"]
         running: true
-        repeat: true
-        triggeredOnStart: true
+        stdout: SplitParser {
+            onRead: function(line) {
+                // Listen for sink changes (volume/mute)
+                if (line.includes("sink") && line.includes("change")) {
+                    volumeProc.running = true
+                }
+            }
+        }
+        onExited: function(exitCode, exitStatus) {
+            // Restart if it dies
+            restartTimer.running = true
+        }
+    }
+
+    Timer {
+        id: restartTimer
+        interval: 1000
+        onTriggered: subscribeProc.running = true
+    }
+
+    // Initial fetch on startup
+    Timer {
+        interval: 100
+        running: true
         onTriggered: volumeProc.running = true
     }
 

@@ -36,41 +36,44 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: expanded ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    // Power profile management using CPU governor (works without power-profiles-daemon)
+    // Power profile management using tuned-adm
     Process {
         id: getPowerProfile
-        command: ["sh", "-c", "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo balanced"]
+        command: ["tuned-adm", "active"]
         stdout: SplitParser {
             onRead: function(line) {
-                let gov = line.trim()
-                // Map CPU governors to our profile names
-                if (gov === "powersave") {
-                    controlCenter.powerProfile = "power-saver"
-                } else if (gov === "performance") {
-                    controlCenter.powerProfile = "performance"
-                } else {
-                    controlCenter.powerProfile = "balanced"
+                // Output: "Current active profile: balanced"
+                if (line.includes("profile:")) {
+                    let profile = line.split(":")[1].trim()
+                    // Map tuned profiles to our 3 modes
+                    if (profile.includes("powersave") || profile.includes("battery") || profile === "laptop-battery-powersave") {
+                        controlCenter.powerProfile = "power-saver"
+                    } else if (profile.includes("performance") || profile === "throughput-performance" || profile === "latency-performance") {
+                        controlCenter.powerProfile = "performance"
+                    } else {
+                        controlCenter.powerProfile = "balanced"
+                    }
                 }
             }
         }
     }
 
-    // Separate processes for each power profile
+    // Separate processes for each power profile using tuned-adm
     Process {
         id: setPowerSaver
-        command: ["sh", "-c", "echo powersave | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null"]
+        command: ["tuned-adm", "profile", "laptop-battery-powersave"]
         onExited: getPowerProfile.running = true
     }
 
     Process {
         id: setBalanced
-        command: ["sh", "-c", "echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || echo ondemand | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null"]
+        command: ["tuned-adm", "profile", "balanced"]
         onExited: getPowerProfile.running = true
     }
 
     Process {
         id: setPerformance
-        command: ["sh", "-c", "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null"]
+        command: ["tuned-adm", "profile", "throughput-performance"]
         onExited: getPowerProfile.running = true
     }
 

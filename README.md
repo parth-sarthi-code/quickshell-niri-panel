@@ -4,9 +4,10 @@
 
 A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/niri) Wayland compositor, built with [Quickshell](https://quickshell.outfoxxed.me/).
 
-![Wayland](https://img.shields.io/badge/Wayland-Niri-blue?style=flat-square)
+![Wayland](https://img.shields.io/badge/Wayland-Niri_25.11-blue?style=flat-square)
 ![Quickshell](https://img.shields.io/badge/Quickshell-0.2.1-green?style=flat-square)
 ![Qt](https://img.shields.io/badge/Qt-6.10-purple?style=flat-square)
+![Arch](https://img.shields.io/badge/Tested-Arch_Linux-1793D1?style=flat-square&logo=arch-linux)
 
 ## 📸 Screenshots
 
@@ -57,6 +58,7 @@ python3 ~/.config/quickshell/scripts/install.py
 The installer will:
 - Install dependencies (pacman/AUR)
 - Set up Nirvana config + fastfetch theme
+- Install optimized Niri config (for Niri 25.11)
 - Show run instructions
 
 ### Manual Install
@@ -77,20 +79,36 @@ spawn-at-startup "sh" "-c" "LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PA
 ## 🛠️ Dependencies
 
 **Required:**
-- Quickshell >= 0.2.1
-- Niri Wayland compositor
+- [Quickshell](https://quickshell.outfoxxed.me/) >= 0.2.1 (`quickshell-git` on AUR)
+- [Niri](https://github.com/YaLTeR/niri) >= 25.11
 - Qt 6.10+
-- Nerd Fonts
 
-**Optional:**
-- `wireplumber` — Audio control
-- `brightnessctl` — Brightness control
-- `networkmanager` — Network management
-- `bluez` — Bluetooth support
-- `tuned` — Power profiles
-- `gammastep` — Night light
-- `playerctl` — Media controls
-- `fastfetch` — System info (with Nirvana theme)
+**Optional (tested on Arch Linux):**
+
+| Category | Package | Description |
+|----------|---------|-------------|
+| Audio | `wireplumber` | PipeWire session manager |
+| Audio | `playerctl` | Media controls |
+| Hardware | `brightnessctl` | Brightness control |
+| Hardware | `bluez` | Bluetooth support |
+| Network | `networkmanager` | Network management |
+| Power | `tuned` | Power profiles daemon |
+| Display | `gammastep` | Night light / blue light filter |
+| Display | `swaybg` | Wallpaper manager |
+| Utilities | `fuzzel` | App launcher (Mod+Space) |
+| Utilities | `swaylock` | Screen locker |
+| Utilities | `mate-polkit` | Polkit authentication agent |
+| Utilities | `fastfetch` | System info fetch tool |
+
+**Recommended Apps (used in keybindings):**
+- `ghostty` — Terminal (Mod+T)
+- `google-chrome` — Browser (Mod+B)
+- `nautilus` — File manager (Mod+E)
+
+**Fonts:**
+- `ttf-sf-pro` — SF Pro Display
+- `otf-font-awesome` — Font Awesome icons
+- `ttf-nerd-fonts-symbols` — Nerd Font icons
 
 ## 📁 Structure
 
@@ -101,9 +119,27 @@ spawn-at-startup "sh" "-c" "LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PA
 ├── components/         # UI components
 │   ├── TopPanel.qml
 │   └── controlcenter/
-└── services/           # System services
-    └── scripts/        # Install script
+├── services/           # System services
+├── scripts/            # Install & utility scripts
+│   ├── install.py
+│   └── set-wallpaper.sh
+└── niri/               # Niri config (installed to ~/.config/niri/)
+    ├── config.kdl      # Optimized for Niri 25.11
+    └── animations.kdl  # Custom animations (optional)
 ```
+
+## ⌨️ Key Bindings (Niri 25.11)
+
+| Binding | Action |
+|---------|--------|
+| `Alt+Tab` | Recent windows switcher (native) |
+| `Mod+A` | Overview |
+| `Mod+Space` | App launcher (fuzzel) |
+| `Mod+T` | Terminal (ghostty) |
+| `Mod+B` | Browser (google-chrome) |
+| `Mod+E` | File manager (nautilus) |
+| `Mod+M` | Maximize window to edges |
+| `Mod+Q` | Close window |
 
 ## ⚙️ Configuration
 

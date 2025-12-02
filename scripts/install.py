@@ -38,19 +38,38 @@ REQUIRED = [
     ("niri", "niri", "Wayland compositor"),
 ]
 
+# Tested on Arch Linux with these packages
 OPTIONAL = [
+    # Audio/Media
     ("wireplumber", "wireplumber", "Audio control (PipeWire)"),
-    ("brightnessctl", "brightnessctl", "Brightness control"),
-    ("networkmanager", "networkmanager", "Network management"),
-    ("bluez", "bluez", "Bluetooth support"),
-    ("tuned", "tuned", "Power profiles"),
-    ("gammastep", "gammastep", "Night light"),
     ("playerctl", "playerctl", "Media controls"),
+    # Hardware
+    ("brightnessctl", "brightnessctl", "Brightness control"),
+    ("bluez", "bluez", "Bluetooth support"),
+    # Network
+    ("networkmanager", "networkmanager", "Network management"),
+    # Power
+    ("tuned", "tuned", "Power profiles daemon"),
+    # Display
+    ("gammastep", "gammastep", "Night light"),
+    ("swaybg", "swaybg", "Wallpaper manager"),
+    # Utilities
+    ("fuzzel", "fuzzel", "App launcher"),
+    ("swaylock", "swaylock", "Screen locker"),
+    ("mate-polkit", "mate-polkit", "Polkit authentication agent"),
     ("fastfetch", "fastfetch", "System info fetch tool"),
+]
+
+# Recommended apps (used in default keybindings)
+APPS = [
+    ("ghostty", "ghostty", "Terminal (Mod+T)"),
+    ("google-chrome", "google-chrome", "Browser (Mod+B)"),
+    ("nautilus", "nautilus", "File manager (Mod+E)"),
 ]
 
 FONTS = [
     ("ttf-sf-pro", "ttf-sf-pro", "SF Pro Display font"),
+    ("otf-font-awesome", "otf-font-awesome", "Font Awesome icons"),
     ("ttf-nerd-fonts-symbols", "ttf-nerd-fonts-symbols", "Nerd Font icons"),
 ]
 
@@ -268,6 +287,39 @@ def install_fastfetch_config():
     print(f"  {Colors.GREEN}✓{Colors.RESET} Installed Nirvana fastfetch config")
 
 
+def install_niri_config():
+    """Install optimized Niri configuration."""
+    niri_dir = Path.home() / ".config" / "niri"
+    nirvana_niri = Path.home() / ".config" / "quickshell" / "niri"
+    
+    # Check if Nirvana niri configs exist
+    if not nirvana_niri.exists():
+        print(f"  {Colors.RED}✗{Colors.RESET} Nirvana niri configs not found at {nirvana_niri}")
+        return False
+    
+    # Create niri config directory
+    niri_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Backup existing configs
+    for config_name in ["config.kdl", "animations.kdl"]:
+        src = nirvana_niri / config_name
+        dest = niri_dir / config_name
+        
+        if not src.exists():
+            continue
+            
+        if dest.exists():
+            backup = dest.with_suffix('.kdl.backup')
+            print(f"  {Colors.YELLOW}Backing up {config_name} to {backup.name}{Colors.RESET}")
+            dest.rename(backup)
+        
+        # Copy config
+        dest.write_text(src.read_text())
+        print(f"  {Colors.GREEN}✓{Colors.RESET} Installed {config_name}")
+    
+    return True
+
+
 def main():
     print(BANNER)
     
@@ -296,6 +348,15 @@ def main():
         if not installed:
             missing_optional.append(pkg_name)
 
+    # Check recommended apps
+    print(f"\n{Colors.BOLD}Recommended Apps:{Colors.RESET}")
+    missing_apps = []
+    for check_name, pkg_name, desc in APPS:
+        installed = is_installed(check_name) or is_installed(pkg_name)
+        print_status(check_name, installed, desc)
+        if not installed:
+            missing_apps.append(pkg_name)
+
     # Check fonts
     print(f"\n{Colors.BOLD}Fonts:{Colors.RESET}")
     missing_fonts = []
@@ -306,7 +367,7 @@ def main():
             missing_fonts.append(pkg_name)
 
     # Installation prompt
-    all_missing = missing_required + missing_optional + missing_fonts
+    all_missing = missing_required + missing_optional + missing_apps + missing_fonts
     
     if not all_missing:
         print(f"\n{Colors.GREEN}✓ All dependencies installed!{Colors.RESET}")
@@ -328,6 +389,14 @@ def main():
                 print(f"    • {pkg}")
             if prompt_yes_no("Install optional packages?", default_yes=True):
                 install_packages(missing_optional, aur_helper)
+
+        # Recommended apps
+        if missing_apps:
+            print(f"\n{Colors.CYAN}Recommended apps (used in keybindings):{Colors.RESET}")
+            for pkg in missing_apps:
+                print(f"    • {pkg}")
+            if prompt_yes_no("Install recommended apps?", default_yes=False):
+                install_packages(missing_apps, aur_helper)
 
         # Fonts
         if missing_fonts:
@@ -364,6 +433,17 @@ def main():
     else:
         print(f"  {Colors.YELLOW}⚠{Colors.RESET} Fastfetch not installed, skipping theme")
 
+    # Install Niri config
+    print(f"\n{Colors.BOLD}Niri Configuration:{Colors.RESET}")
+    if is_installed("niri"):
+        niri_config = Path.home() / ".config" / "niri" / "config.kdl"
+        if niri_config.exists():
+            print(f"  {Colors.CYAN}ℹ{Colors.RESET} Existing Niri config found at {niri_config}")
+        if prompt_yes_no("Install Nirvana Niri config? (optimized for Niri 25.11)", default_yes=True):
+            install_niri_config()
+    else:
+        print(f"  {Colors.YELLOW}⚠{Colors.RESET} Niri not installed, skipping config")
+
     # Print run instructions
     prompt_continue("Press Enter to see run instructions...")
     
@@ -372,11 +452,16 @@ def main():
 
 {Colors.GREEN}✓ Installation complete!{Colors.RESET}
 
-{Colors.BOLD}To run Nirvana:{Colors.RESET}
-  {Colors.CYAN}LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell{Colors.RESET}
+{Colors.BOLD}Start Niri session:{Colors.RESET}
+  Log out and select Niri from your display manager, or run:
+  {Colors.CYAN}niri-session{Colors.RESET}
 
-{Colors.BOLD}Add to your Niri config:{Colors.RESET}
-  {Colors.CYAN}spawn-at-startup "sh" "-c" "LD_LIBRARY_PATH=/usr/lib/qt6/qml/Niri:$LD_LIBRARY_PATH quickshell"{Colors.RESET}
+{Colors.BOLD}Key bindings (Niri 25.11):{Colors.RESET}
+  {Colors.CYAN}Alt+Tab{Colors.RESET}      Recent windows switcher
+  {Colors.CYAN}Mod+A{Colors.RESET}        Overview
+  {Colors.CYAN}Mod+Space{Colors.RESET}    App launcher (fuzzel)
+  {Colors.CYAN}Mod+T{Colors.RESET}        Terminal (ghostty)
+  {Colors.CYAN}Mod+M{Colors.RESET}        Maximize to edges
 
 {Colors.MAGENTA}🧘 Enjoy your blissful workflow!{Colors.RESET}
 """)

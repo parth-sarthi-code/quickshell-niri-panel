@@ -5,7 +5,7 @@ import "../services"
 
 // Network/WiFi indicator
 Item {
-    id: root
+    id: networkIndicator
 
     implicitWidth: row.implicitWidth
     implicitHeight: Config.panelHeight
@@ -55,13 +55,11 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton) {
-                NetworkService.toggleWifi()
-            } else {
-                NetworkService.openSettings()
+        onClicked: {
+            // Open Control Center (root is ShellRoot from shell.qml)
+            if (root.controlCenter) {
+                root.controlCenter.toggle()
             }
         }
     }

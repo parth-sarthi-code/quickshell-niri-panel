@@ -3,20 +3,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Audio/Volume service using wpctl (optimized)
+// Audio/Volume service using wpctl - simplified
 Singleton {
     id: root
 
     property int volume: 50
     property bool muted: false
 
-    // Single process for volume + mute state
+    // Get volume + mute state
     Process {
         id: volumeProc
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
         stdout: SplitParser {
             onRead: function(line) {
-                // Format: "Volume: 0.50" or "Volume: 0.50 [MUTED]"
                 line = line.trim()
                 if (line.startsWith("Volume:")) {
                     let parts = line.split(" ")
@@ -30,8 +29,9 @@ Singleton {
         }
     }
 
+    // Poll less frequently - volume doesn't change often on its own
     Timer {
-        interval: 3000
+        interval: 5000  // 5s instead of 2s
         running: true
         repeat: true
         triggeredOnStart: true
@@ -42,6 +42,7 @@ Singleton {
         id: setVolumeProc
         property real vol: 0.5
         command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", vol.toString()]
+        onExited: volumeProc.running = true  // Refresh after setting
     }
 
     Process {
@@ -52,13 +53,21 @@ Singleton {
 
     function setVolume(val) {
         val = Math.max(0, Math.min(100, Math.round(val)))
-        root.volume = val
+        root.volume = val  // Optimistic update
         setVolumeProc.vol = val / 100
         setVolumeProc.running = true
     }
 
     function toggleMute() {
-        root.muted = !root.muted
+        root.muted = !root.muted  // Optimistic update
         toggleMuteProc.running = true
+    }
+
+    function increaseVolume(amount) {
+        setVolume(root.volume + amount)
+    }
+
+    function decreaseVolume(amount) {
+        setVolume(root.volume - amount)
     }
 }

@@ -1,14 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Io
 import ".."
 import "../services"
 
-// Volume indicator with icon
+// Volume indicator - click opens volume dropdown
 Item {
-    id: root
+    id: volumeIndicator
 
-    implicitWidth: row.implicitWidth
+    implicitWidth: row.implicitWidth + 4
     implicitHeight: Config.panelHeight
 
     property int volume: AudioService.volume
@@ -19,15 +18,14 @@ Item {
         anchors.centerIn: parent
         spacing: 4
 
-        // Volume icon (SF Symbols style)
         Text {
             text: {
-                if (muted || volume === 0) return "󰝟" // muted
-                if (volume < 33) return "󰕿" // low
-                if (volume < 66) return "󰖀" // medium
-                return "󰕾" // high
+                if (muted || volume === 0) return "󰝟"
+                if (volume < 33) return "󰕿"
+                if (volume < 66) return "󰖀"
+                return "󰕾"
             }
-            font.family: "Symbols Nerd Font, JetBrainsMono Nerd Font, Font Awesome 6 Free"
+            font.family: "Symbols Nerd Font"
             font.pixelSize: Config.iconSize
             color: muted ? Config.inactiveColor : Config.panelForeground
             Layout.alignment: Qt.AlignVCenter
@@ -40,7 +38,7 @@ Item {
         anchors.margins: 2
         radius: Config.borderRadius
         color: Config.hoverColor
-        opacity: mouseArea.containsMouse ? 1 : 0
+        opacity: mouseArea.containsMouse || (root.volumeDropdown && root.volumeDropdown.isOpen) ? 1 : 0
         
         Behavior on opacity {
             NumberAnimation { duration: 100 }
@@ -55,13 +53,14 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton) {
+            if (mouse.button === Qt.RightButton) {
                 AudioService.toggleMute()
-            } else {
-                // Open pavucontrol or similar
-                Qt.callLater(function() {
-                    volumeSettingsProc.running = true
-                })
+            } else if (root.volumeDropdown) {
+                // Close control center if open
+                if (root.controlCenter && root.controlCenter.visible) {
+                    root.controlCenter.visible = false
+                }
+                root.volumeDropdown.toggle()
             }
         }
 
@@ -72,16 +71,5 @@ Item {
                 AudioService.decreaseVolume(5)
             }
         }
-    }
-
-    Process {
-        id: volumeSettingsProc
-        command: ["sh", "-c", "pavucontrol || gnome-control-center sound || kde-open5 settings5://sound"]
-    }
-
-    // Tooltip
-    ToolTip {
-        visible: mouseArea.containsMouse
-        text: muted ? "Muted" : "Volume: " + volume + "%"
     }
 }

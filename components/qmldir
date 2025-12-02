@@ -2,7 +2,6 @@ TopPanel 1.0 TopPanel.qml
 WorkspaceIndicator 1.0 WorkspaceIndicator.qml
 AppLauncher 1.0 AppLauncher.qml
 FocusedApp 1.0 FocusedApp.qml
-VolumeIndicator 1.0 VolumeIndicator.qml
 BrightnessIndicator 1.0 BrightnessIndicator.qml
 NetworkIndicator 1.0 NetworkIndicator.qml
 BluetoothIndicator 1.0 BluetoothIndicator.qml

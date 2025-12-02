@@ -10,9 +10,13 @@ A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/
 
 ## 📸 Screenshots
 
-| Minimal Bar | Expanded Bar | Control Panel |
-|:-----------:|:------------:|:-------------:|
-| ![Minimal](minimal_bar.png) | ![Expanded](expanded_bar.png) | ![Control Panel](control_panel.png) |
+| Minimal Bar | Control Panel |
+|:-----------:|:-------------:|
+| ![Minimal](minimal_bar.png) | ![Control Panel](control_panel.png) |
+
+<p align="center">
+  <img src="expanded_bar.png" alt="Expanded Bar" />
+</p>
 
 ## ✨ Features
 

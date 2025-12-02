@@ -15,7 +15,9 @@ A lightweight top panel and control center for [Niri](https://github.com/YaLTeR/
 | ![Fastfetch](fastfetch.png) | ![Control Panel](control_panel.png) |
 
 <p align="center">
-  <img src="minimal_bar.png" alt="Minimal Bar" /><br/>
+  <em>Minimal Bar</em><br/>
+  <img src="minimal_bar.png" alt="Minimal Bar" /><br/><br/>
+  <em>Expanded Bar (Network Speed + System Stats)</em><br/>
   <img src="expanded_bar.png" alt="Expanded Bar" />
 </p>
 

@@ -1,10 +1,44 @@
-# Quickshell Niri Panel
+# Nirvana
+
+> A blissful, minimal shell for Niri — peace in your workflow.
 
 A lightweight, macOS-inspired top panel and control center for the [Niri](https://github.com/YaLTeR/niri) Wayland compositor, built with [Quickshell](https://quickshell.outfoxxed.me/).
 
 ![Wayland](https://img.shields.io/badge/Wayland-Niri-blue?style=flat-square)
 ![Quickshell](https://img.shields.io/badge/Quickshell-0.2.1-green?style=flat-square)
 ![Qt](https://img.shields.io/badge/Qt-6.10-purple?style=flat-square)
+
+## 📋 Roadmap
+
+### Panel
+- [x] Workspace indicator with visual pills
+- [x] Focused app name display
+- [x] Network speed monitor (toggle-able)
+- [x] Network status indicator
+- [x] Bluetooth indicator
+- [x] Battery indicator with percentage
+- [x] Airplane mode indicator
+- [x] Night light indicator
+- [x] Clock display
+- [ ] Notification indicator
+- [ ] System tray support
+
+### Control Center
+- [x] WiFi toggle with network name
+- [x] Bluetooth toggle with device name
+- [x] Airplane mode toggle
+- [x] Night light toggle (gammastep)
+- [x] Volume slider (PipeWire)
+- [x] Brightness slider
+- [x] Power profiles (tuned-adm)
+- [x] System stats (CPU, temp, RAM)
+- [x] Media controls (playerctl)
+- [x] Lock screen action
+- [ ] Notification center / history
+- [ ] Power menu (shutdown, reboot, suspend, logout)
+- [ ] About section (system info)
+- [ ] Calendar widget
+- [ ] Quick settings presets
 
 ## ✨ Features
 

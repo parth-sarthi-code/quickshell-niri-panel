@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import "../.."
 
-// Small toggle button (Focus, Night Light, etc.)
+// Quick action button (Screenshot, Lock, etc.)
 Rectangle {
-    id: toggle
+    id: action
 
     property string icon: ""
     property string label: ""
@@ -13,54 +13,51 @@ Rectangle {
     signal clicked()
 
     color: active ? Config.ccModuleActiveBackground : Config.ccModuleBackground
-    radius: Config.ccModuleRadius - 4
+    radius: Config.ccModuleRadius
 
     Behavior on color {
         ColorAnimation { duration: 150 }
     }
 
-    RowLayout {
-        anchors {
-            fill: parent
-            margins: 10
-        }
-        spacing: 10
+    ColumnLayout {
+        anchors.centerIn: parent
+        spacing: 6
 
         // Icon
         Rectangle {
-            Layout.preferredWidth: 28
-            Layout.preferredHeight: 28
-            radius: 14
+            Layout.alignment: Qt.AlignHCenter
+            width: 32
+            height: 32
+            radius: 16
             color: active ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.1)
 
             Text {
                 anchors.centerIn: parent
-                text: toggle.icon
+                text: action.icon
                 font.family: "Symbols Nerd Font"
-                font.pixelSize: 14
+                font.pixelSize: 16
                 color: active ? Config.panelForeground : Config.inactiveColor
             }
         }
 
         // Label
         Text {
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
             text: label
             font.family: Config.fontFamily
-            font.pixelSize: 12
+            font.pixelSize: 10
             font.weight: Font.Medium
             color: active ? Config.panelForeground : Config.activeColor
-            elide: Text.ElideRight
         }
     }
 
     MouseArea {
         anchors.fill: parent
-        onClicked: toggle.clicked()
+        onClicked: action.clicked()
 
         Rectangle {
             anchors.fill: parent
-            radius: toggle.radius
+            radius: action.radius
             color: parent.pressed ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
         }
     }

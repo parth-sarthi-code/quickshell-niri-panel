@@ -17,7 +17,7 @@ Singleton {
     // Colors
     readonly property color accentColor: "#007AFF"
     readonly property color activeColor: "#ffffff"
-    readonly property color inactiveColor: "#666666"
+    readonly property color inactiveColor: "#999999"
     readonly property color hoverColor: Qt.rgba(1, 1, 1, 0.1)
     readonly property color urgentColor: "#FF453A"
     readonly property color warningColor: "#FF9F0A"

@@ -2,3 +2,4 @@ module components.controlcenter
 ControlCenter 1.0 ControlCenter.qml
 CCSlider 1.0 CCSlider.qml
 CCQuickAction 1.0 CCQuickAction.qml
+CCToggle 1.0 CCToggle.qml

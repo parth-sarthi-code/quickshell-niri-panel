@@ -6,17 +6,25 @@ import Quickshell.Io
 import "../.."
 import "../../services"
 
-// iOS-style Control Center popup
+// Optimized GNOME/macOS-style Control Center
 PanelWindow {
-    id: controlCenter
+    id: cc
 
     property bool expanded: false
-    property string powerProfile: "balanced" // power-saver, balanced, performance
+    property string powerProfile: "balanced"
+    property bool airplaneMode: false
+    property bool nightLightActive: false
+    property bool showStatsInPanel: false
+
+    // System stats
+    property int cpuUsage: 0
+    property int cpuTemp: 0
+    property int ramUsage: 0
+    property int ramTotal: 0
 
     visible: expanded
     screen: Quickshell.screens[0]
     
-    // Positioning: top-right corner, below panel
     anchors {
         top: true
         right: true
@@ -27,89 +35,137 @@ PanelWindow {
     }
 
     implicitWidth: Config.ccWidth
-    implicitHeight: contentColumn.implicitHeight + Config.ccPadding * 2
-
+    implicitHeight: contentCol.implicitHeight + Config.ccPadding * 2
     color: "transparent"
 
-    // Don't grab exclusive keyboard focus - it blocks other windows
     WlrLayershell.namespace: "quickshell-controlcenter"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    // Power profile management using tuned-adm
+    // Single process for power profile
     Process {
-        id: getPowerProfile
-        command: ["tuned-adm", "active"]
+        id: powerProc
+        property string action: "get"
+        command: action === "get" 
+            ? ["tuned-adm", "active"]
+            : ["tuned-adm", "profile", action]
         stdout: SplitParser {
             onRead: function(line) {
-                // Output: "Current active profile: balanced"
-                if (line.includes("profile:")) {
-                    let profile = line.split(":")[1].trim()
-                    // Map tuned profiles to our 3 modes
-                    if (profile.includes("powersave") || profile.includes("battery") || profile === "laptop-battery-powersave") {
-                        controlCenter.powerProfile = "power-saver"
-                    } else if (profile.includes("performance") || profile === "throughput-performance" || profile === "latency-performance") {
-                        controlCenter.powerProfile = "performance"
-                    } else {
-                        controlCenter.powerProfile = "balanced"
-                    }
-                }
+                if (powerProc.action !== "get" || !line.includes("profile:")) return
+                let p = line.split(":")[1].trim()
+                cc.powerProfile = p.includes("powersave") || p.includes("battery") ? "power-saver"
+                    : p.includes("performance") ? "performance" : "balanced"
             }
         }
     }
 
-    // Separate processes for each power profile using tuned-adm
-    Process {
-        id: setPowerSaver
-        command: ["tuned-adm", "profile", "laptop-battery-powersave"]
-        onExited: getPowerProfile.running = true
-    }
-
-    Process {
-        id: setBalanced
-        command: ["tuned-adm", "profile", "balanced"]
-        onExited: getPowerProfile.running = true
-    }
-
-    Process {
-        id: setPerformance
-        command: ["tuned-adm", "profile", "throughput-performance"]
-        onExited: getPowerProfile.running = true
-    }
-
     function setPowerProfile(profile) {
-        if (profile === "power-saver") {
-            setPowerSaver.running = true
-        } else if (profile === "performance") {
-            setPerformance.running = true
-        } else {
-            setBalanced.running = true
+        powerProfile = profile
+        powerProc.action = profile === "power-saver" ? "laptop-battery-powersave"
+            : profile === "performance" ? "throughput-performance" : "balanced"
+        powerProc.running = true
+    }
+
+    function toggleAirplaneMode() {
+        airplaneMode = !airplaneMode
+        if (airplaneMode) {
+            if (NetworkService.wifiEnabled) NetworkService.toggleWifi()
+            if (BluetoothService.powered) BluetoothService.togglePower()
+        } else if (!NetworkService.wifiEnabled) {
+            NetworkService.toggleWifi()
         }
     }
 
-    // Screenshot process
+    // CPU usage tracking (needs delta calculation)
+    property real _prevCpuIdle: 0
+    property real _prevCpuTotal: 0
+
+    // Consolidated stats process - CPU needs proper delta calculation
     Process {
-        id: screenshotProc
-        command: ["sh", "-c", "grimblast copy area 2>/dev/null || grim -g \"$(slurp)\" - | wl-copy 2>/dev/null || gnome-screenshot -a"]
+        id: statsProc
+        command: ["sh", "-c", "head -1 /proc/stat; cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0; awk '/MemTotal/ {t=$2} /MemAvailable/ {a=$2} END {printf \"%d %d\\n\", ((t-a)/t)*100, t/1024/1024}' /proc/meminfo"]
+        property int lineNum: 0
+        stdout: SplitParser {
+            onRead: function(line) {
+                let v = line.trim()
+                if (statsProc.lineNum === 0) {
+                    // Parse CPU line: cpu user nice system idle iowait irq softirq
+                    let parts = v.split(/\s+/)
+                    if (parts[0] === "cpu") {
+                        let user = parseFloat(parts[1]) || 0
+                        let nice = parseFloat(parts[2]) || 0
+                        let system = parseFloat(parts[3]) || 0
+                        let idle = parseFloat(parts[4]) || 0
+                        let iowait = parseFloat(parts[5]) || 0
+                        let irq = parseFloat(parts[6]) || 0
+                        let softirq = parseFloat(parts[7]) || 0
+                        
+                        let total = user + nice + system + idle + iowait + irq + softirq
+                        let idleTime = idle + iowait
+                        
+                        if (cc._prevCpuTotal > 0) {
+                            let totalDelta = total - cc._prevCpuTotal
+                            let idleDelta = idleTime - cc._prevCpuIdle
+                            if (totalDelta > 0) {
+                                cc.cpuUsage = Math.round(100 * (1 - idleDelta / totalDelta))
+                            }
+                        }
+                        cc._prevCpuTotal = total
+                        cc._prevCpuIdle = idleTime
+                    }
+                } else if (statsProc.lineNum === 1) {
+                    cc.cpuTemp = Math.round(parseInt(v) / 1000) || 0
+                } else {
+                    let p = v.split(" ")
+                    cc.ramUsage = parseInt(p[0]) || 0
+                    cc.ramTotal = parseInt(p[1]) || 0
+                }
+                statsProc.lineNum++
+            }
+        }
+        onStarted: lineNum = 0
     }
 
-    // Screen lock process
+    Timer {
+        interval: cc.expanded ? 3000 : 7000
+        running: cc.expanded || cc.showStatsInPanel
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: statsProc.running = true
+    }
+
+    // Night light
+    Process {
+        id: nightProc
+        property bool turnOn: false
+        command: turnOn 
+            ? ["sh", "-c", "pkill gammastep 2>/dev/null; sleep 0.2; gammastep -P -O 4500 &"]
+            : ["sh", "-c", "pkill gammastep 2>/dev/null; sleep 0.2; gammastep -x 2>/dev/null"]
+    }
+
+    function toggleNightLight() {
+        nightLightActive = !nightLightActive
+        nightProc.turnOn = nightLightActive
+        nightProc.running = true
+    }
+
     Process {
         id: lockProc
         command: ["sh", "-c", "swaylock 2>/dev/null || hyprlock 2>/dev/null || loginctl lock-session"]
     }
 
-    Component.onCompleted: getPowerProfile.running = true
+    Component.onCompleted: {
+        powerProc.action = "get"
+        powerProc.running = true
+    }
 
-    // Main background
+    // Background
     Rectangle {
-        id: background
         anchors.fill: parent
         color: Config.ccBackground
         opacity: Config.ccBackgroundOpacity
         radius: Config.ccModuleRadius + 4
 
-        // Blur effect simulation with gradient
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
@@ -120,7 +176,6 @@ PanelWindow {
         }
     }
 
-    // Border for glassmorphism
     Rectangle {
         anchors.fill: parent
         color: "transparent"
@@ -129,90 +184,82 @@ PanelWindow {
         border.width: 1
     }
 
-    // System stats polling
-    property int cpuUsage: 0
-    property int cpuTemp: 0
-    property int ramUsage: 0
-    property int ramTotal: 0
+    // Content
+    ColumnLayout {
+        id: contentCol
+        anchors.fill: parent
+        anchors.margins: Config.ccPadding
+        spacing: Config.ccModuleSpacing
 
-    Process {
-        id: cpuStatProc
-        command: ["sh", "-c", "top -bn1 | grep 'Cpu(s)' | awk '{print int($2 + $4)}'"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                let val = parseInt(line.trim())
-                if (!isNaN(val)) controlCenter.cpuUsage = val
-            }
-        }
-    }
+        // Quick Toggles
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 80
+            radius: Config.ccModuleRadius
+            color: Config.ccModuleBackground
 
-    Process {
-        id: cpuTempProc
-        command: ["sh", "-c", "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | awk '{sum+=$1; n++} END {if(n>0) print int(sum/n/1000)}'"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                let val = parseInt(line.trim())
-                if (!isNaN(val)) controlCenter.cpuTemp = val
-            }
-        }
-    }
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 8
 
-    Process {
-        id: ramStatProc
-        command: ["sh", "-c", "free | awk '/Mem:/ {printf \"%d %d\", ($3/$2)*100, $2/1024/1024}'"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                let parts = line.trim().split(" ")
-                if (parts.length >= 2) {
-                    controlCenter.ramUsage = parseInt(parts[0]) || 0
-                    controlCenter.ramTotal = parseInt(parts[1]) || 0
+                CCToggle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    icon: NetworkService.wifiEnabled ? (NetworkService.connected ? "󰤨" : "󰤯") : "󰤮"
+                    label: "Wi-Fi"
+                    subtitle: NetworkService.wifiEnabled && NetworkService.connected ? NetworkService.ssid : (NetworkService.wifiEnabled ? "On" : "Off")
+                    active: NetworkService.wifiEnabled
+                    onClicked: if (!airplaneMode) NetworkService.toggleWifi()
+                }
+
+                CCToggle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    icon: BluetoothService.powered ? (BluetoothService.connected ? "󰂱" : "󰂯") : "󰂲"
+                    label: "Bluetooth"
+                    subtitle: BluetoothService.powered ? (BluetoothService.connected ? BluetoothService.deviceName : "On") : "Off"
+                    active: BluetoothService.powered
+                    onClicked: if (!airplaneMode) BluetoothService.togglePower()
+                }
+
+                CCToggle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    icon: airplaneMode ? "󰀝" : "󰀞"
+                    label: "Airplane"
+                    subtitle: airplaneMode ? "On" : "Off"
+                    active: airplaneMode
+                    onClicked: toggleAirplaneMode()
                 }
             }
         }
-    }
 
-    Timer {
-        interval: 2000
-        running: controlCenter.expanded
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            cpuStatProc.running = true
-            cpuTempProc.running = true
-            ramStatProc.running = true
-        }
-    }
-
-    // Content
-    ColumnLayout {
-        id: contentColumn
-        anchors {
-            fill: parent
-            margins: Config.ccPadding
-        }
-        spacing: Config.ccModuleSpacing
-
-        // Top row: System Stats (left) + Sliders (right)
+        // Stats + Sliders
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 120
             spacing: Config.ccModuleSpacing
 
-            // System Stats Box
+            // Stats Box
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Config.ccModuleBackground
+                color: showStatsInPanel ? "#3a3a3c" : Config.ccModuleBackground
                 radius: Config.ccModuleRadius
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: cc.showStatsInPanel = !cc.showStatsInPanel
+                }
 
                 ColumnLayout {
-                    anchors {
-                        fill: parent
-                        margins: 12
-                    }
+                    anchors.fill: parent
+                    anchors.margins: 12
                     spacing: 8
 
-                    // CPU Usage + Temp
+                    // CPU Row
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -257,14 +304,13 @@ PanelWindow {
                         }
                     }
 
-                    // Separator
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
                         color: Qt.rgba(1, 1, 1, 0.1)
                     }
 
-                    // RAM Usage
+                    // RAM Row
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -311,31 +357,25 @@ PanelWindow {
                 }
             }
 
-            // Brightness slider
             CCSlider {
                 Layout.preferredWidth: Config.ccSliderWidth
                 Layout.fillHeight: true
                 icon: BrightnessService.brightness > 70 ? "󰃠" : (BrightnessService.brightness > 30 ? "󰃟" : "󰃞")
                 value: BrightnessService.brightness
-                onSliderMoved: function(val) {
-                    BrightnessService.setBrightness(val)
-                }
+                onSliderMoved: function(val) { BrightnessService.setBrightness(val) }
             }
 
-            // Volume slider
             CCSlider {
                 Layout.preferredWidth: Config.ccSliderWidth
                 Layout.fillHeight: true
                 icon: AudioService.muted ? "󰖁" : (AudioService.volume > 50 ? "󰕾" : (AudioService.volume > 0 ? "󰖀" : "󰕿"))
                 value: AudioService.muted ? 0 : AudioService.volume
-                onSliderMoved: function(val) {
-                    AudioService.setVolume(val)
-                }
+                onSliderMoved: function(val) { AudioService.setVolume(val) }
                 onIconClicked: AudioService.toggleMute()
             }
         }
 
-        // Power Profile Selector (3 options)
+        // Power Profiles
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 50
@@ -343,10 +383,8 @@ PanelWindow {
             color: Config.ccModuleBackground
 
             RowLayout {
-                anchors {
-                    fill: parent
-                    margins: 6
-                }
+                anchors.fill: parent
+                anchors.margins: 6
                 spacing: 6
 
                 // Power Saver
@@ -355,7 +393,6 @@ PanelWindow {
                     Layout.fillHeight: true
                     radius: Config.ccModuleRadius - 4
                     color: powerProfile === "power-saver" ? Config.ccModuleActiveBackground : "transparent"
-
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     RowLayout {
@@ -366,7 +403,7 @@ PanelWindow {
                             text: "󰌪"
                             font.family: "Symbols Nerd Font"
                             font.pixelSize: 14
-                            color: powerProfile === "power-saver" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "power-saver" ? Config.panelForeground : "#bbbbbb"
                         }
 
                         Text {
@@ -374,15 +411,13 @@ PanelWindow {
                             font.family: Config.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.Medium
-                            color: powerProfile === "power-saver" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "power-saver" ? Config.panelForeground : "#bbbbbb"
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            controlCenter.setPowerProfile("power-saver")
-                        }
+                        onClicked: cc.setPowerProfile("power-saver")
                     }
                 }
 
@@ -392,7 +427,6 @@ PanelWindow {
                     Layout.fillHeight: true
                     radius: Config.ccModuleRadius - 4
                     color: powerProfile === "balanced" ? Config.ccModuleActiveBackground : "transparent"
-
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     RowLayout {
@@ -403,7 +437,7 @@ PanelWindow {
                             text: "󰗑"
                             font.family: "Symbols Nerd Font"
                             font.pixelSize: 14
-                            color: powerProfile === "balanced" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "balanced" ? Config.panelForeground : "#bbbbbb"
                         }
 
                         Text {
@@ -411,15 +445,13 @@ PanelWindow {
                             font.family: Config.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.Medium
-                            color: powerProfile === "balanced" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "balanced" ? Config.panelForeground : "#bbbbbb"
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            controlCenter.setPowerProfile("balanced")
-                        }
+                        onClicked: cc.setPowerProfile("balanced")
                     }
                 }
 
@@ -429,7 +461,6 @@ PanelWindow {
                     Layout.fillHeight: true
                     radius: Config.ccModuleRadius - 4
                     color: powerProfile === "performance" ? Config.ccModuleActiveBackground : "transparent"
-
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     RowLayout {
@@ -440,7 +471,7 @@ PanelWindow {
                             text: "󱐋"
                             font.family: "Symbols Nerd Font"
                             font.pixelSize: 14
-                            color: powerProfile === "performance" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "performance" ? Config.panelForeground : "#bbbbbb"
                         }
 
                         Text {
@@ -448,70 +479,81 @@ PanelWindow {
                             font.family: Config.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.Medium
-                            color: powerProfile === "performance" ? Config.panelForeground : Config.inactiveColor
+                            color: powerProfile === "performance" ? Config.panelForeground : "#bbbbbb"
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            controlCenter.setPowerProfile("performance")
-                        }
+                        onClicked: cc.setPowerProfile("performance")
                     }
                 }
             }
         }
 
-        // Quick Actions Row (Screenshot, Screen Lock, Focus, Night Light)
+        // Bottom Row
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 70
+            Layout.preferredHeight: 50
             spacing: Config.ccModuleSpacing
 
-            // Screenshot
-            CCQuickAction {
+            Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                icon: "󰹑"
-                label: "Screenshot"
-                onClicked: {
-                    controlCenter.close()
-                    Qt.callLater(function() { screenshotProc.running = true })
+                radius: Config.ccModuleRadius
+                color: nightLightActive ? "#cc8800" : Config.ccModuleBackground  // Warm amber when active
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Text {
+                        text: "󰌶"
+                        font.family: "Symbols Nerd Font"
+                        font.pixelSize: 18
+                        color: nightLightActive ? "#fff5e0" : Config.inactiveColor  // Warm white when active
+                    }
+
+                    Text {
+                        text: "Night Light"
+                        font.family: Config.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        color: nightLightActive ? "#fff5e0" : Config.panelForeground  // Warm white when active
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: toggleNightLight()
                 }
             }
 
-            // Screen Lock
-            CCQuickAction {
-                Layout.fillWidth: true
+            Rectangle {
+                Layout.preferredWidth: 50
                 Layout.fillHeight: true
-                icon: "󰌾"
-                label: "Lock"
-                onClicked: {
-                    controlCenter.close()
-                    lockProc.running = true
+                radius: Config.ccModuleRadius
+                color: lockMa.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Config.ccModuleBackground
+                Behavior on color { ColorAnimation { duration: 100 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "󰌾"
+                    font.family: "Symbols Nerd Font"
+                    font.pixelSize: 20
+                    color: Config.panelForeground
                 }
-            }
 
-            // Focus / DND
-            CCQuickAction {
-                id: focusBtn
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                icon: "󰍶"
-                label: "Focus"
-                active: false
-                onClicked: active = !active
-            }
-
-            // Night Light
-            CCQuickAction {
-                id: nightLightBtn
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                icon: "󰌶"
-                label: "Night"
-                active: false
-                onClicked: active = !active
+                MouseArea {
+                    id: lockMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        cc.close()
+                        lockProc.running = true
+                    }
+                }
             }
         }
     }
@@ -519,7 +561,8 @@ PanelWindow {
     function toggle() {
         expanded = !expanded
         if (expanded) {
-            getPowerProfile.running = true
+            powerProc.action = "get"
+            powerProc.running = true
         }
     }
 

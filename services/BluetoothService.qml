@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Bluetooth service using bluetoothctl
+// Bluetooth service using bluetoothctl (optimized)
 Singleton {
     id: root
 
@@ -12,80 +12,74 @@ Singleton {
     property string deviceName: ""
     property int connectedDevices: 0
 
-    Timer {
-        interval: 5000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: updateBluetooth()
-    }
-
+    // Single consolidated process for all BT info
     Process {
-        id: powerProc
-        command: ["bluetoothctl", "show"]
+        id: btInfoProc
+        command: ["sh", "-c", "bluetoothctl show 2>/dev/null | grep -E 'Powered' | head -1; bluetoothctl devices Connected 2>/dev/null"]
+        
+        property bool _tmpPowered: false
+        property int _tmpCount: 0
+        property string _tmpName: ""
+        
         stdout: SplitParser {
             onRead: function(line) {
                 if (line.includes("Powered:")) {
-                    root.powered = line.includes("yes")
+                    btInfoProc._tmpPowered = line.includes("yes")
+                } else if (line.startsWith("Device")) {
+                    btInfoProc._tmpCount++
+                    if (btInfoProc._tmpName === "") {
+                        // Extract device name: "Device XX:XX:XX:XX:XX:XX DeviceName"
+                        let parts = line.split(" ")
+                        if (parts.length >= 3) {
+                            btInfoProc._tmpName = parts.slice(2).join(" ")
+                        }
+                    }
                 }
             }
         }
-    }
-
-    Process {
-        id: connectedProc
-        command: ["sh", "-c", "bluetoothctl devices Connected 2>/dev/null | wc -l"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                let count = parseInt(line.trim())
-                root.connectedDevices = isNaN(count) ? 0 : count
-                root.connected = count > 0
-            }
+        onStarted: {
+            _tmpPowered = false
+            _tmpCount = 0
+            _tmpName = ""
+        }
+        onExited: {
+            root.powered = _tmpPowered
+            root.connectedDevices = _tmpCount
+            root.connected = _tmpCount > 0
+            root.deviceName = _tmpName
         }
     }
 
-    Process {
-        id: deviceNameProc
-        command: ["sh", "-c", "bluetoothctl devices Connected 2>/dev/null | head -1 | cut -d' ' -f3-"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                root.deviceName = line.trim()
-            }
-        }
-    }
-
-    function updateBluetooth() {
-        powerProc.running = true
-        connectedProc.running = true
-        deviceNameProc.running = true
+    Timer {
+        interval: 8000  // Reduced frequency - BT doesn't change often
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: btInfoProc.running = true
     }
 
     Process {
         id: btPowerOnProc
         command: ["bluetoothctl", "power", "on"]
+        onExited: btInfoProc.running = true
     }
 
     Process {
         id: btPowerOffProc
         command: ["bluetoothctl", "power", "off"]
-    }
-
-    Process {
-        id: btSettingsProc
-        command: ["sh", "-c", "blueman-manager || bluedevil-wizard || gnome-control-center bluetooth"]
+        onExited: btInfoProc.running = true
     }
 
     function togglePower() {
-        if (powered) {
-            btPowerOffProc.running = true
-        } else {
-            btPowerOnProc.running = true
-        }
+        // Optimistic update
         root.powered = !root.powered
-        Qt.callLater(updateBluetooth)
-    }
-
-    function openSettings() {
-        btSettingsProc.running = true
+        if (root.powered) {
+            btPowerOnProc.running = true
+        } else {
+            btPowerOffProc.running = true
+            root.connected = false
+            root.deviceName = ""
+            root.connectedDevices = 0
+        }
     }
 }

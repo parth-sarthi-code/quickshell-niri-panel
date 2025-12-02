@@ -3,105 +3,99 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Network service using nmcli (NetworkManager)
+// Network service using nmcli (optimized)
 Singleton {
     id: root
 
     property bool connected: false
+    property bool wifiEnabled: true
     property string type: "none" // wifi, ethernet, none
     property string ssid: ""
-    property int strength: 0 // 0-100 for wifi signal
-    property string ip: ""
+    property int strength: 0
 
-    Timer {
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: updateNetwork()
-    }
-
+    // Single consolidated process for all network info
     Process {
         id: networkProc
-        command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device", "status"]
+        command: ["sh", "-c", "echo \"RADIO:$(nmcli radio wifi)\"; nmcli -t -f TYPE,STATE,CONNECTION device status 2>/dev/null; nmcli -t -f SIGNAL,ACTIVE dev wifi 2>/dev/null | grep ':yes'"]
+        
+        property bool _tmpWifiEnabled: true
+        property bool _tmpConnected: false
+        property string _tmpType: "none"
+        property string _tmpSsid: ""
+        property int _tmpStrength: 0
+        
         stdout: SplitParser {
             onRead: function(line) {
-                let parts = line.split(":")
-                if (parts.length >= 3) {
-                    let devType = parts[0]
-                    let state = parts[1]
-                    let conn = parts[2]
-                    
-                    // Check if this device is connected
-                    if (state.startsWith("connected")) {
+                if (line.startsWith("RADIO:")) {
+                    networkProc._tmpWifiEnabled = line.includes("enabled")
+                } else if (line.includes(":yes")) {
+                    // WiFi signal line: "85:yes"
+                    let sig = parseInt(line.split(":")[0])
+                    if (!isNaN(sig)) networkProc._tmpStrength = sig
+                } else {
+                    let parts = line.split(":")
+                    if (parts.length >= 3 && parts[1].startsWith("connected")) {
+                        let devType = parts[0]
+                        let conn = parts[2]
                         if (devType === "wifi") {
-                            root.connected = true
-                            root.type = "wifi"
-                            root.ssid = conn
-                        } else if (devType === "ethernet" && !root.connected) {
-                            root.connected = true
-                            root.type = "ethernet"
-                            root.ssid = conn
+                            networkProc._tmpConnected = true
+                            networkProc._tmpType = "wifi"
+                            networkProc._tmpSsid = conn
+                        } else if (devType === "ethernet" && !networkProc._tmpConnected) {
+                            networkProc._tmpConnected = true
+                            networkProc._tmpType = "ethernet"
+                            networkProc._tmpSsid = conn
                         }
                     }
                 }
             }
         }
-        onExited: function(exitCode) {
-            // After parsing device status, get wifi signal if connected via wifi
-            if (root.type === "wifi") {
-                wifiStrengthProc.running = true
-            }
+        onStarted: {
+            _tmpWifiEnabled = root.wifiEnabled
+            _tmpConnected = false
+            _tmpType = "none"
+            _tmpSsid = ""
+            _tmpStrength = 0
+        }
+        onExited: {
+            root.wifiEnabled = _tmpWifiEnabled
+            root.connected = _tmpConnected
+            root.type = _tmpType
+            root.ssid = _tmpSsid
+            root.strength = _tmpStrength
         }
     }
 
-    Process {
-        id: wifiStrengthProc
-        command: ["sh", "-c", "nmcli -t -f SIGNAL,ACTIVE dev wifi 2>/dev/null | grep ':yes' | cut -d: -f1"]
-        stdout: SplitParser {
-            onRead: function(line) {
-                let sig = parseInt(line.trim())
-                if (!isNaN(sig)) {
-                    root.strength = sig
-                }
-            }
-        }
-    }
-
-    function updateNetwork() {
-        // Reset state before checking
-        root.connected = false
-        root.type = "none"
-        root.ssid = ""
-        root.strength = 0
-        networkProc.running = true
+    Timer {
+        interval: 8000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: networkProc.running = true
     }
 
     Process {
         id: wifiOnProc
         command: ["nmcli", "radio", "wifi", "on"]
+        onExited: networkProc.running = true
     }
 
     Process {
         id: wifiOffProc
         command: ["nmcli", "radio", "wifi", "off"]
-    }
-
-    Process {
-        id: networkSettingsProc
-        command: ["sh", "-c", "nm-connection-editor || gnome-control-center wifi || kde-open5 settings5://network"]
+        onExited: networkProc.running = true
     }
 
     function toggleWifi() {
-        if (connected && type === "wifi") {
-            wifiOffProc.running = true
-        } else {
+        root.wifiEnabled = !root.wifiEnabled
+        if (root.wifiEnabled) {
             wifiOnProc.running = true
+        } else {
+            wifiOffProc.running = true
+            root.connected = false
+            root.type = "none"
+            root.ssid = ""
+            root.strength = 0
         }
-        Qt.callLater(updateNetwork)
-    }
-
-    function openSettings() {
-        networkSettingsProc.running = true
     }
 }

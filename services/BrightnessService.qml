@@ -9,9 +9,24 @@ Singleton {
 
     property int brightness: 100
     property int maxBrightness: 100
+    property string backlightDevice: ""
     
-    // Auto-detect backlight device
-    readonly property string backlightPath: "/sys/class/backlight/nvidia_wmi_ec_backlight"
+    // Auto-detect backlight device on startup
+    Process {
+        id: detectProc
+        command: ["sh", "-c", "ls /sys/class/backlight/ | head -1"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                let dev = line.trim()
+                if (dev) root.backlightDevice = dev
+            }
+        }
+        onExited: if (backlightDevice) readProc.running = true
+    }
+    
+    readonly property string backlightPath: "/sys/class/backlight/" + backlightDevice
+
+    Component.onCompleted: detectProc.running = true
 
     // Read brightness directly from sysfs
     Process {
@@ -39,9 +54,8 @@ Singleton {
     
     Timer {
         interval: 5000
-        running: true
+        running: root.backlightDevice !== ""
         repeat: true
-        triggeredOnStart: true
         onTriggered: readProc.running = true
     }
 

@@ -29,9 +29,9 @@ Singleton {
         }
     }
 
-    // Poll for external volume changes
+    // Poll for external volume changes (every 2s is enough)
     Timer {
-        interval: 1000
+        interval: 2000
         running: true
         repeat: true
         triggeredOnStart: true

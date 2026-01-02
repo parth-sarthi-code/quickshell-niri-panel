@@ -8,6 +8,8 @@ import "../services"
 PanelWindow {
     id: panel
 
+    screen: Quickshell.screens[0]
+
     anchors {
         top: true
         left: true

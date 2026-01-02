@@ -406,6 +406,10 @@ def install_qml_niri(qml_path: Path, aur_helper: str | None):
         run(["sudo", "mkdir", "-p", str(qml_path)])
         run(["sudo", "cp", "-r", str(src), str(dest)])
 
+    # Fix library loading by creating symlink for libNiri.so
+    print("  Setting up library symlink...")
+    run(["sudo", "ln", "-sf", str(qml_path / "Niri" / "libNiri.so"), "/usr/lib/libNiri.so"])
+
     verify_qml_niri(qml_path)
 
 

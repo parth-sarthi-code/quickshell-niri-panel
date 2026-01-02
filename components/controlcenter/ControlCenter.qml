@@ -42,6 +42,22 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+    // Timer to close control center after mouse leaves for 5 seconds
+    Timer {
+        id: closeTimer
+        interval: 5000
+        onTriggered: cc.close()
+    }
+
+    // Detect when mouse leaves the control center
+    MouseArea {
+        id: hoverDetector
+        anchors.fill: parent
+        hoverEnabled: true
+        onEntered: closeTimer.stop()
+        onExited: closeTimer.start()
+    }
+
     // Single process for power profile
     Process {
         id: powerProc

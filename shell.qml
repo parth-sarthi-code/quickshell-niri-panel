@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import Niri 0.1
 import "components"
 import "components/controlcenter"
@@ -10,6 +11,30 @@ ShellRoot {
 
     // Global reference to control center
     property alias controlCenter: ccLoader.item
+
+    // Invisible overlay to catch clicks outside control center
+    PanelWindow {
+        id: clickCatcher
+        visible: controlCenter && controlCenter.expanded
+        screen: Quickshell.screens[0]
+        
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+        
+        color: "transparent"
+        WlrLayershell.namespace: "quickshell-clickcatcher"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        
+        MouseArea {
+            anchors.fill: parent
+            onClicked: controlCenter.close()
+        }
+    }
 
     // Niri IPC connection
     Niri {

@@ -42,10 +42,10 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    // Timer to close control center after mouse leaves for 5 seconds
+    // Timer to close control center after mouse leaves for 3.5 seconds
     Timer {
         id: closeTimer
-        interval: 5000
+        interval: 3500
         onTriggered: cc.close()
     }
 
